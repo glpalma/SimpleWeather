@@ -1,5 +1,8 @@
 package com.glpalma.simpleweather.data.di
 
+import com.glpalma.simpleweather.data.di.qualifier.GeocodingRetrofit
+import com.glpalma.simpleweather.data.di.qualifier.WeatherRetrofit
+import com.glpalma.simpleweather.data.remote.api.GeocodingApi
 import com.glpalma.simpleweather.data.remote.api.OpenMeteoApi
 import dagger.Module
 import dagger.Provides
@@ -32,7 +35,8 @@ object NetworkModule {
 
     @Provides
     @Singleton
-    fun provideRetrofit(
+    @WeatherRetrofit
+    fun provideWeatherRetrofit(
         okHttpClient: OkHttpClient
     ): Retrofit =
         Retrofit.Builder()
@@ -44,7 +48,26 @@ object NetworkModule {
     @Provides
     @Singleton
     fun provideOpenMeteoApi(
-        retrofit: Retrofit
+        @WeatherRetrofit retrofit: Retrofit
     ): OpenMeteoApi =
         retrofit.create(OpenMeteoApi::class.java)
+
+    @Provides
+    @Singleton
+    @GeocodingRetrofit
+    fun provideGeocodingRetrofit(
+        okHttpClient: OkHttpClient
+    ): Retrofit =
+        Retrofit.Builder()
+            .baseUrl("https://geocoding-api.open-meteo.com/")
+            .client(okHttpClient)
+            .addConverterFactory(GsonConverterFactory.create())
+            .build()
+
+    @Provides
+    @Singleton
+    fun provideGeocodingApi(
+        @GeocodingRetrofit retrofit: Retrofit
+    ): GeocodingApi =
+        retrofit.create(GeocodingApi::class.java)
 }

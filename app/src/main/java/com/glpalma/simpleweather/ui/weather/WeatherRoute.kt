@@ -1,6 +1,9 @@
 package com.glpalma.simpleweather.ui.weather
 
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -8,6 +11,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -23,10 +27,9 @@ fun WeatherRoute(
     viewModel: WeatherViewModel = hiltViewModel()
 ) {
     val state by viewModel.state.collectAsState()
-    LaunchedEffect(key1=Unit) {
-        viewModel.loadWeather(
-            lat = -23.55, // São Paulo, hardcoded for now
-            lon = -46.63
+    LaunchedEffect(key1 = Unit) {
+        viewModel.loadWeatherFromName(
+            name = "Campinas"
         )
     }
 
@@ -40,29 +43,61 @@ fun WeatherScreen(
     when (state) {
         WeatherUiState.Loading -> {
             Text(
-                modifier = Modifier.padding(16.dp).fillMaxSize(),
+                modifier = Modifier
+                    .padding(16.dp)
+                    .fillMaxSize(),
                 text = "Loading...",
                 fontWeight = FontWeight.Bold,
                 fontFamily = FontFamily.Monospace,
                 textAlign = TextAlign.Center,
 
-            )
+                )
         }
 
         is WeatherUiState.Success -> {
             val report = state.report
-            Text(
-                modifier = Modifier.padding(16.dp).fillMaxSize(),
-                text = "Temperature: ${report.current.temperatureC}",
-                fontWeight = FontWeight.Bold,
-                fontFamily = FontFamily.Monospace,
-                textAlign = TextAlign.Center
-            )
+
+            Column(Modifier.fillMaxSize()) {
+                Row(Modifier.fillMaxSize()) {
+                    Text(
+                        modifier = Modifier
+                            .padding(16.dp)
+                            .fillMaxWidth(),
+                        text = "Campinas",
+                        fontWeight = FontWeight.Bold,
+                        fontFamily = FontFamily.Monospace,
+                        textAlign = TextAlign.Center,
+                        color = Color.Blue
+                    )
+                    Text(
+                        modifier = Modifier
+                            .padding(16.dp)
+                            .fillMaxWidth(),
+                        text = report.current.temperatureC.toString(),
+                        fontWeight = FontWeight.Bold,
+                        fontFamily = FontFamily.Monospace,
+                        textAlign = TextAlign.Center,
+                        color = Color.Blue
+                    )
+                }
+                Text(
+                    modifier = Modifier
+                        .padding(16.dp)
+                        .fillMaxSize(),
+                    text = "Temperature: ${report.current.temperatureC}",
+                    fontWeight = FontWeight.Bold,
+                    fontFamily = FontFamily.Monospace,
+                    textAlign = TextAlign.Center
+                )
+            }
+
         }
 
         is WeatherUiState.Error -> {
             Text(
-                modifier = Modifier.padding(16.dp).fillMaxSize(),
+                modifier = Modifier
+                    .padding(16.dp)
+                    .fillMaxSize(),
                 text = "Error: ${state.message}",
                 fontWeight = FontWeight.Bold,
                 fontFamily = FontFamily.Monospace,
@@ -74,17 +109,17 @@ fun WeatherScreen(
 
 @Preview(showBackground = true)
 @Composable
-fun WeatherScreenLoadingPreview() {
+fun WeatherScreenSuccessPreview() {
     WeatherScreen(
-        state = WeatherUiState.Loading
+        state = WeatherUiState.Success(report = fakeWeatherReport())
     )
 }
 
 @Preview(showBackground = true)
 @Composable
-fun WeatherScreenSuccessPreview() {
+fun WeatherScreenLoadingPreview() {
     WeatherScreen(
-        state = WeatherUiState.Success(report = fakeWeatherReport())
+        state = WeatherUiState.Loading
     )
 }
 
@@ -98,7 +133,8 @@ fun WeatherScreenErrorPreview() {
 
 fun fakeWeatherReport() = WeatherReport(
     current = CurrentWeather(
-        temperatureC = 23.0,
-        condition = WeatherCondition.CLEAR),
-        daily = emptyList()
+        temperatureC = 27.0,
+        condition = WeatherCondition.CLEAR
+    ),
+    daily = emptyList()
 )

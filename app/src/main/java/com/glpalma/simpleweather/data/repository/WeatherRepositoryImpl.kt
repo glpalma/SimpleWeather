@@ -14,5 +14,6 @@ class WeatherRepositoryImpl @Inject constructor(
         longitude: Double
     ): Result<WeatherReport> {
         return runCatching { api.getForecast(latitude, longitude).toDomain() }
+        // todo: add database
     }
 }

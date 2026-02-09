@@ -1,11 +1,11 @@
 package com.glpalma.simpleweather.domain.usecase
 
 import com.glpalma.simpleweather.domain.model.CityInfo
-import com.glpalma.simpleweather.domain.repository.LocationRepository
+import com.glpalma.simpleweather.domain.repository.CityRepository
 import javax.inject.Inject
 
 class GetCityListFromNameUseCase @Inject constructor(
-    private val repository: LocationRepository
+    private val repository: CityRepository
 ) {
 
     suspend operator fun invoke(

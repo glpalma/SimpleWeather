@@ -2,9 +2,9 @@ package com.glpalma.simpleweather.data.di
 
 import com.glpalma.simpleweather.data.remote.api.GeocodingApi
 import com.glpalma.simpleweather.data.remote.api.OpenMeteoApi
-import com.glpalma.simpleweather.data.repository.LocationRepositoryImpl
+import com.glpalma.simpleweather.data.repository.CityRepositoryImpl
 import com.glpalma.simpleweather.data.repository.WeatherRepositoryImpl
-import com.glpalma.simpleweather.domain.repository.LocationRepository
+import com.glpalma.simpleweather.domain.repository.CityRepository
 import com.glpalma.simpleweather.domain.repository.WeatherRepository
 import dagger.Module
 import dagger.Provides
@@ -27,7 +27,7 @@ object RepositoryModule {
     @Singleton
     fun provideGeocodingRepository(
         api: GeocodingApi
-    ): LocationRepository {
-        return LocationRepositoryImpl(api)
+    ): CityRepository {
+        return CityRepositoryImpl(api)
     }
 }

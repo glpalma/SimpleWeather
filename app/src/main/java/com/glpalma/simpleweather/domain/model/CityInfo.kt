@@ -5,7 +5,6 @@ data class CityInfo(
     val id: String,
     val latitude: Double,
     val longitude: Double,
-    val elevation: Double,
     val timezone: String,
     val country: String,
     val stateOrProvince: String

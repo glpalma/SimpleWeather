@@ -11,6 +11,6 @@ class GetCityListFromNameUseCase @Inject constructor(
     suspend operator fun invoke(
         cityName: String
     ): Result<List<CityInfo>> {
-        return repository.searchCity(cityName)
+        return repository.searchCityByName(cityName)
     }
 }

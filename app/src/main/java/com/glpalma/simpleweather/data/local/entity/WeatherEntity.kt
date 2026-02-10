@@ -18,5 +18,10 @@ data class WeatherEntity(
     @PrimaryKey val cityId: String,
     val currentTemp: Double,
     val lastUpdated: Long,
-    val dailyJson: String
+    val currentWeatherCode: Int,
+
+    val dates: List<String>,
+    val maxTemps: List<Double>,
+    val minTemps: List<Double>,
+    val weatherCodes: List<Int>
 )

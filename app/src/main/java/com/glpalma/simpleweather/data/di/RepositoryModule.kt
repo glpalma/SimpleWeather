@@ -1,5 +1,7 @@
 package com.glpalma.simpleweather.data.di
 
+import com.glpalma.simpleweather.data.local.dao.CityDao
+import com.glpalma.simpleweather.data.local.dao.WeatherDao
 import com.glpalma.simpleweather.data.remote.api.GeocodingApi
 import com.glpalma.simpleweather.data.remote.api.OpenMeteoApi
 import com.glpalma.simpleweather.data.repository.CityRepositoryImpl
@@ -18,16 +20,18 @@ object RepositoryModule {
     @Provides
     @Singleton
     fun provideWeatherRepository(
-        api: OpenMeteoApi
+        api: OpenMeteoApi,
+        weatherDao: WeatherDao
     ): WeatherRepository {
-        return WeatherRepositoryImpl(api)
+        return WeatherRepositoryImpl(api, weatherDao)
     }
 
     @Provides
     @Singleton
     fun provideGeocodingRepository(
-        api: GeocodingApi
+        api: GeocodingApi,
+        cityDao: CityDao
     ): CityRepository {
-        return CityRepositoryImpl(api)
+        return CityRepositoryImpl(api, cityDao)
     }
 }

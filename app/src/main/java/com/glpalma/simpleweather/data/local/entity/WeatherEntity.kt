@@ -23,5 +23,9 @@ data class WeatherEntity(
     val dates: List<String>,
     val maxTemps: List<Double>,
     val minTemps: List<Double>,
-    val weatherCodes: List<Int>
+    val weatherCodes: List<Int>,
+
+    val hourlyTimes: List<String>,
+    val hourlyTemps: List<Double>,
+    val hourlyWeatherCodes: List<Int>
 )

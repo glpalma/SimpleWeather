@@ -12,7 +12,7 @@ class GetSavedCitiesWithWeatherUseCase @Inject constructor(
     suspend operator fun invoke(): Result<List<DisplayInfo>> {
         return cityRepository.getCities().mapCatching { cities ->
             cities.mapNotNull { city ->
-                weatherRepository.getWeather(city)
+                weatherRepository.getCachedWeatherForCity(city.id)
                     .getOrNull()
                     ?.let { report -> DisplayInfo(cityInfo = city, report = report) }
             }

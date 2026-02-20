@@ -1,39 +1,69 @@
 package com.glpalma.simpleweather.ui.weather
 
-import androidx.compose.foundation.clickable
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
+import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.glpalma.simpleweather.domain.model.CityInfo
 import com.glpalma.simpleweather.domain.model.CurrentWeather
+import com.glpalma.simpleweather.domain.model.DailyForecast
 import com.glpalma.simpleweather.domain.model.DisplayInfo
+import com.glpalma.simpleweather.domain.model.HourlyForecast
 import com.glpalma.simpleweather.domain.model.WeatherCondition
 import com.glpalma.simpleweather.domain.model.WeatherReport
+import com.glpalma.simpleweather.ui.theme.SimpleWeatherTheme
+import com.glpalma.simpleweather.ui.theme.WeatherBlack
+import com.glpalma.simpleweather.ui.weather.components.CityPickerContent
+import com.glpalma.simpleweather.ui.weather.components.CompactTomorrowContent
+import com.glpalma.simpleweather.ui.weather.components.HourlyForecastCard
+import com.glpalma.simpleweather.ui.weather.components.TodayCardContent
+import com.glpalma.simpleweather.ui.weather.components.WeatherCard
+import com.glpalma.simpleweather.ui.weather.components.WeatherTopBar
+import androidx.activity.compose.BackHandler
+import kotlinx.coroutines.launch
+import java.time.LocalDate
+import java.time.LocalDateTime
+import kotlin.math.roundToInt
 
 @Composable
 fun WeatherRoute(
@@ -41,258 +71,376 @@ fun WeatherRoute(
 ) {
     val state by viewModel.state.collectAsState()
 
-    LaunchedEffect(state.errorMessage) {
-        state.errorMessage?.let { _ ->
-            // Could show Snackbar here; for now UI shows error text
-        }
+    BackHandler(enabled = state.screenMode != WeatherScreenMode.TODAY) {
+        viewModel.setScreenMode(WeatherScreenMode.TODAY)
     }
 
     WeatherScreen(
         state = state,
+        onGridClick = { viewModel.setScreenMode(WeatherScreenMode.CITY_PICKER) },
+        onBackClick = { viewModel.setScreenMode(WeatherScreenMode.TODAY) },
+        onSevenDaysClick = { viewModel.setScreenMode(WeatherScreenMode.SEVEN_DAY) },
+        onRefresh = viewModel::refreshCurrentCity,
+        onSavedCitySelected = viewModel::selectSavedCity,
+        onNewCitySelected = viewModel::selectAndSaveNewCity,
         onSearchQueryChange = viewModel::updateSearchQuery,
-        onCitySelected = viewModel::selectAndSaveCity,
-        onRefreshSaved = viewModel::loadSavedCitiesWithWeather
-    )
+        onToggleCitySearch = viewModel::toggleCitySearch,
+        onClosePicker = { viewModel.setScreenMode(WeatherScreenMode.TODAY) })
 }
 
 @Composable
 fun WeatherScreen(
     state: WeatherUiState,
+    onGridClick: () -> Unit,
+    onBackClick: () -> Unit,
+    onSevenDaysClick: () -> Unit,
+    onRefresh: () -> Unit,
+    onSavedCitySelected: (DisplayInfo) -> Unit,
+    onNewCitySelected: (CityInfo) -> Unit,
     onSearchQueryChange: (String) -> Unit,
-    onCitySelected: (CityInfo) -> Unit,
-    onRefreshSaved: () -> Unit
+    onToggleCitySearch: () -> Unit,
+    onClosePicker: () -> Unit
 ) {
-    Column(
+    val density = LocalDensity.current
+    val scope = rememberCoroutineScope()
+    val pullOffset = remember { Animatable(0f) }
+    val refreshThresholdPx = with(density) { 120.dp.toPx() }
+
+    val nestedScrollConnection = remember {
+        object : NestedScrollConnection {
+            override fun onPostScroll(
+                consumed: Offset, available: Offset, source: NestedScrollSource
+            ): Offset {
+                if (available.y > 0 && source == NestedScrollSource.UserInput) {
+                    val dampened = available.y * 0.5f
+                    scope.launch {
+                        pullOffset.snapTo(
+                            (pullOffset.value + dampened).coerceAtMost(refreshThresholdPx * 1.3f)
+                        )
+                    }
+                    return Offset(0f, available.y)
+                }
+                return Offset.Zero
+            }
+
+            override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
+                if (available.y < 0 && pullOffset.value > 0f) {
+                    val consumed = available.y.coerceAtLeast(-pullOffset.value)
+                    scope.launch {
+                        pullOffset.snapTo((pullOffset.value + consumed).coerceAtLeast(0f))
+                    }
+                    return Offset(0f, consumed)
+                }
+                return Offset.Zero
+            }
+
+            override suspend fun onPreFling(available: Velocity): Velocity {
+                if (pullOffset.value >= refreshThresholdPx) {
+                    onRefresh()
+                }
+                pullOffset.animateTo(
+                    0f, spring(stiffness = Spring.StiffnessMedium)
+                )
+                return available
+            }
+        }
+    }
+
+    Box(
         modifier = Modifier
             .fillMaxSize()
-            .padding(16.dp)
+            .background(WeatherBlack)
     ) {
-        // Search bar
-        OutlinedTextField(
-            value = state.searchQuery,
-            onValueChange = onSearchQueryChange,
-            modifier = Modifier.fillMaxWidth(),
-            label = { Text("Search city") },
-            singleLine = true
-        )
+        val canPullToRefresh = state.screenMode != WeatherScreenMode.CITY_PICKER
 
-        Spacer(modifier = Modifier.height(8.dp))
-
-        // Search results (matching cities)
-        if (state.isSearching) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp),
-                horizontalArrangement = Arrangement.Center
-            ) {
-                CircularProgressIndicator()
-            }
-        } else if (state.searchResults.isNotEmpty()) {
-            Text(
-                text = "Select a city to add",
-                modifier = Modifier.padding(vertical = 4.dp),
-                fontWeight = FontWeight.Medium
-            )
-            LazyColumn(
-                modifier = Modifier
-                    .weight(1f)
-                    .fillMaxWidth(),
-                verticalArrangement = Arrangement.spacedBy(4.dp)
-            ) {
-                items(
-                    state.searchResults,
-                    key = { it.id }
-                ) { city ->
-                    SearchResultItem(
-                        city = city,
-                        onClick = { onCitySelected(city) }
-                    )
-                }
-            }
-        } else {
-            Spacer(modifier = Modifier.weight(1f))
-        }
-
-        HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
-
-        // Saved cities with current forecast
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                text = "Saved cities",
-                modifier = Modifier.padding(vertical = 4.dp),
-                fontWeight = FontWeight.Bold
-            )
-            TextButton(onClick = onRefreshSaved) {
-                Text("Refresh")
-            }
-        }
-        if (state.isLoadingSaved) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp),
-                horizontalArrangement = Arrangement.Center
-            ) {
-                CircularProgressIndicator()
-            }
-        } else if (state.savedCitiesWithWeather.isEmpty()) {
-            Text(
-                text = "No saved cities. Search and select a city above.",
-                modifier = Modifier.padding(16.dp)
-            )
-        } else {
-            LazyColumn(
-                modifier = Modifier
-                    .weight(1f)
-                    .fillMaxWidth(),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                items(
-                    state.savedCitiesWithWeather,
-                    key = { it.cityInfo.id }
-                ) { displayInfo ->
-                    SavedCityWeatherItem(displayInfo = displayInfo)
-                }
-            }
-        }
-
-        state.errorMessage?.let { message ->
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(
-                text = message,
-                modifier = Modifier.fillMaxWidth(),
-                color = androidx.compose.ui.graphics.Color.Red
-            )
-        }
-    }
-}
-
-@Composable
-private fun SearchResultItem(
-    city: CityInfo,
-    onClick: () -> Unit
-) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick),
-        colors = CardDefaults.cardColors()
-    ) {
         Column(
-            modifier = Modifier.padding(12.dp)
-        ) {
-            Text(
-                text = city.name,
-                fontWeight = FontWeight.SemiBold
-            )
-            if (city.stateOrProvince.isNotEmpty()) {
-                Text(
-                    text = "${city.stateOrProvince}, ${city.country}",
-                    style = MaterialTheme.typography.bodySmall
-                )
-            } else {
-                Text(
-                    text = city.country,
-                    style = MaterialTheme.typography.bodySmall
-                )
+            modifier = Modifier
+                .fillMaxSize()
+                .then(
+                    if (canPullToRefresh) {
+                    Modifier.nestedScroll(nestedScrollConnection)
+                        .offset { IntOffset(0, pullOffset.value.roundToInt()) }
+                } else {
+                    Modifier
+                })) {
+
+            WeatherCard(mode = state.screenMode) {
+                AnimatedContent(
+                    targetState = state.screenMode, transitionSpec = {
+                        fadeIn(animationSpec = androidx.compose.animation.core.tween(300)) togetherWith fadeOut(
+                            animationSpec = androidx.compose.animation.core.tween(300)
+                        )
+                    }, label = "cardContent"
+                ) { targetMode ->
+                    when (targetMode) {
+                        WeatherScreenMode.TODAY -> {
+                            Column {
+                                AnimatedVisibility(
+                                    visible = state.screenMode != WeatherScreenMode.CITY_PICKER
+                                ) {
+                                    Column {
+                                        Spacer(Modifier.statusBarsPadding())
+                                        WeatherTopBar(
+                                            cityName = state.currentCity?.name ?: "",
+                                            screenMode = state.screenMode,
+                                            onGridClick = onGridClick,
+                                            onBackClick = onBackClick
+                                        )
+                                    }
+                                }
+                                TodayCardContent(
+                                    currentWeather = state.currentWeather,
+                                    isRefreshing = state.isRefreshing
+                                )
+
+                            }
+                        }
+
+                        WeatherScreenMode.SEVEN_DAY -> {
+                            CompactTomorrowContent(
+                                dailyForecasts = state.currentWeather?.daily ?: emptyList()
+                            )
+                        }
+
+                        WeatherScreenMode.CITY_PICKER -> {
+                            CityPickerContent(
+                                savedCities = state.savedCitiesWithWeather,
+                                searchQuery = state.searchQuery,
+                                searchResults = state.searchResults,
+                                isSearching = state.isSearching,
+                                isCitySearchVisible = state.isCitySearchVisible,
+                                onToggleSearch = onToggleCitySearch,
+                                onSearchQueryChange = onSearchQueryChange,
+                                onSavedCitySelected = onSavedCitySelected,
+                                onNewCitySelected = onNewCitySelected,
+                                onClose = onClosePicker
+                            )
+                        }
+                    }
+                }
+            }
+
+            AnimatedContent(
+                targetState = state.screenMode, transitionSpec = {
+                    fadeIn(animationSpec = androidx.compose.animation.core.tween(300)) togetherWith fadeOut(
+                        animationSpec = androidx.compose.animation.core.tween(300)
+                    )
+                }, label = "bottomContent"
+            ) { targetMode ->
+                when (targetMode) {
+                    WeatherScreenMode.TODAY -> {
+                        TodayBottomSection(
+                            hourlyForecasts = state.currentWeather?.hourly ?: emptyList(),
+                            onSevenDaysClick = onSevenDaysClick
+                        )
+                    }
+
+                    WeatherScreenMode.SEVEN_DAY -> {
+                        SevenDayBottomSection(
+                            dailyForecasts = state.currentWeather?.daily ?: emptyList()
+                        )
+                    }
+
+                    WeatherScreenMode.CITY_PICKER -> {
+                        Spacer(Modifier.height(0.dp))
+                    }
+                }
             }
         }
     }
 }
 
 @Composable
-private fun SavedCityWeatherItem(
-    displayInfo: DisplayInfo
+private fun TodayBottomSection(
+    hourlyForecasts: List<HourlyForecast>, onSevenDaysClick: () -> Unit
 ) {
-    val city = displayInfo.cityInfo
-    val current = displayInfo.report.current
+    val now = LocalDateTime.now()
+    val relevantHours = filterRelevantHours(hourlyForecasts, now)
 
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors()
-    ) {
+    Column(modifier = Modifier.padding(top = 16.dp)) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp),
+                .padding(horizontal = 20.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = "Today", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 18.sp
+            )
+            TextButton(onClick = onSevenDaysClick) {
                 Text(
-                    text = city.name,
-                    fontWeight = FontWeight.Bold,
-                    style = MaterialTheme.typography.titleMedium
-                )
-                Text(
-                    text = if (city.stateOrProvince.isNotEmpty()) {
-                        "${city.stateOrProvince}, ${city.country}"
-                    } else {
-                        city.country
-                    },
-                    style = MaterialTheme.typography.bodySmall
+                    text = "7 days >", color = Color.White.copy(alpha = 0.8f), fontSize = 14.sp
                 )
             }
-            Column(horizontalAlignment = Alignment.End) {
-                Text(
-                    text = "${current.temperatureC.toInt()}°C",
-                    fontWeight = FontWeight.Bold,
-                    style = MaterialTheme.typography.titleLarge
-                )
-                Text(
-                    text = current.condition.name.replace('_', ' '),
-                    style = MaterialTheme.typography.bodySmall
+        }
+
+        Spacer(Modifier.height(8.dp))
+
+        LazyRow(
+            modifier = Modifier.padding(horizontal = 16.dp),
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            items(relevantHours, key = { it.time.toString() }) { forecast ->
+                HourlyForecastCard(
+                    forecast = forecast,
+                    isCurrentHour = forecast.time.hour == now.hour && forecast.time.toLocalDate() == now.toLocalDate()
                 )
             }
         }
     }
 }
 
-@Preview(showBackground = true)
 @Composable
-fun WeatherScreenPreview() {
-    WeatherScreen(
-        state = WeatherUiState(
-            searchQuery = "Camp",
-            searchResults = listOf(
-                CityInfo(
-                    name = "Campinas",
-                    id = "1",
-                    latitude = -22.9,
-                    longitude = -47.1,
-                    timezone = "America/Sao_Paulo",
-                    country = "Brazil",
-                    stateOrProvince = "São Paulo"
-                )
-            ),
-            savedCitiesWithWeather = listOf(
-                DisplayInfo(
-                    cityInfo = CityInfo(
-                        name = "Campinas",
-                        id = "1",
-                        latitude = -22.9,
-                        longitude = -47.1,
-                        timezone = "America/Sao_Paulo",
+private fun SevenDayBottomSection(
+    dailyForecasts: List<DailyForecast>
+) {
+    Column(modifier = Modifier.padding(top = 16.dp)) {
+        com.glpalma.simpleweather.ui.weather.components.SevenDayList(
+            dailyForecasts = dailyForecasts
+        )
+    }
+}
+
+private fun filterRelevantHours(
+    hourly: List<HourlyForecast>, now: LocalDateTime
+): List<HourlyForecast> {
+    val currentHourIndex = hourly.indexOfFirst {
+        it.time.hour == now.hour && it.time.toLocalDate() == now.toLocalDate()
+    }
+    if (currentHourIndex == -1) return hourly.take(4)
+
+    val startIndex = (currentHourIndex - 1).coerceAtLeast(0)
+    val endIndex = (currentHourIndex + 3).coerceAtMost(hourly.size)
+    return hourly.subList(startIndex, endIndex)
+}
+
+// region Previews
+
+private val previewCity = CityInfo(
+    name = "São Paulo",
+    id = "1",
+    latitude = 50.58,
+    longitude = 8.67,
+    timezone = "America/Sao_Paulo",
+    country = "Brazil",
+    stateOrProvince = "São Paulo"
+)
+
+private val previewHourly = listOf(
+    HourlyForecast(
+        time = LocalDateTime.now().withMinute(0).minusHours(1),
+        temperatureC = 23.0,
+        condition = WeatherCondition.CLOUDY,
+        isDay = true
+    ), HourlyForecast(
+        time = LocalDateTime.now().withMinute(0),
+        temperatureC = 21.0,
+        condition = WeatherCondition.STORM,
+        isDay = true
+    ), HourlyForecast(
+        time = LocalDateTime.now().withMinute(0).plusHours(1),
+        temperatureC = 22.0,
+        condition = WeatherCondition.RAIN,
+        isDay = true
+    ), HourlyForecast(
+        time = LocalDateTime.now().withMinute(0).plusHours(2),
+        temperatureC = 19.0,
+        condition = WeatherCondition.SNOW,
+        isDay = false
+    )
+)
+
+private val previewDaily = listOf(
+    DailyForecast(LocalDate.now(), 14.0, 20.0, WeatherCondition.RAIN),
+    DailyForecast(LocalDate.now().plusDays(1), 16.0, 22.0, WeatherCondition.RAIN),
+    DailyForecast(LocalDate.now().plusDays(2), 13.0, 19.0, WeatherCondition.STORM),
+    DailyForecast(LocalDate.now().plusDays(3), 12.0, 18.0, WeatherCondition.CLOUDY),
+    DailyForecast(LocalDate.now().plusDays(4), 19.0, 23.0, WeatherCondition.STORM),
+    DailyForecast(LocalDate.now().plusDays(5), 17.0, 25.0, WeatherCondition.RAIN),
+    DailyForecast(LocalDate.now().plusDays(6), 18.0, 21.0, WeatherCondition.STORM)
+)
+
+private val previewWeather = WeatherReport(
+    current = CurrentWeather(
+        temperatureC = 21.0, condition = WeatherCondition.STORM, isDay = true
+    ), hourly = previewHourly, daily = previewDaily
+)
+
+private val previewState = WeatherUiState(
+    screenMode = WeatherScreenMode.TODAY,
+    currentCity = previewCity,
+    currentWeather = previewWeather,
+    isRefreshing = true
+)
+
+private val noopCallbacks: Map<String, () -> Unit> = emptyMap()
+
+@Preview(showBackground = true, showSystemUi = true, name = "Today")
+@Composable
+private fun WeatherScreenTodayPreview() {
+    SimpleWeatherTheme(darkTheme = true, dynamicColor = false) {
+        WeatherScreen(
+            state = previewState,
+            onGridClick = {},
+            onBackClick = {},
+            onSevenDaysClick = {},
+            onRefresh = {},
+            onSavedCitySelected = {},
+            onNewCitySelected = {},
+            onSearchQueryChange = {},
+            onToggleCitySearch = {},
+            onClosePicker = {})
+    }
+}
+
+@Preview(showBackground = true, showSystemUi = true, name = "7 Days")
+@Composable
+private fun WeatherScreenSevenDayPreview() {
+    SimpleWeatherTheme(darkTheme = true, dynamicColor = false) {
+        WeatherScreen(
+            state = previewState.copy(screenMode = WeatherScreenMode.SEVEN_DAY),
+            onGridClick = {},
+            onBackClick = {},
+            onSevenDaysClick = {},
+            onRefresh = {},
+            onSavedCitySelected = {},
+            onNewCitySelected = {},
+            onSearchQueryChange = {},
+            onToggleCitySearch = {},
+            onClosePicker = {})
+    }
+}
+
+@Preview(showBackground = true, showSystemUi = true, name = "City Picker")
+@Composable
+private fun WeatherScreenCityPickerPreview() {
+    SimpleWeatherTheme(darkTheme = true, dynamicColor = false) {
+        WeatherScreen(
+            state = previewState.copy(
+            screenMode = WeatherScreenMode.CITY_PICKER, savedCitiesWithWeather = listOf(
+                DisplayInfo(previewCity, previewWeather), DisplayInfo(
+                    previewCity.copy(
+                        id = "2",
+                        name = "São Paulo",
                         country = "Brazil",
-                        stateOrProvince = "São Paulo"
-                    ),
-                    report = WeatherReport(
-                        current = CurrentWeather(
-                            temperatureC = 27.0,
-                            condition = WeatherCondition.CLEAR
-                        ),
-                        daily = emptyList()
+                        stateOrProvince = "SP"
+                    ), previewWeather.copy(
+                        current = CurrentWeather(27.0, WeatherCondition.CLEAR, true)
                     )
                 )
             )
         ),
-        onSearchQueryChange = {},
-        onCitySelected = {},
-        onRefreshSaved = {}
-    )
+            onGridClick = {},
+            onBackClick = {},
+            onSevenDaysClick = {},
+            onRefresh = {},
+            onSavedCitySelected = {},
+            onNewCitySelected = {},
+            onSearchQueryChange = {},
+            onToggleCitySearch = {},
+            onClosePicker = {})
+    }
 }
+
+// endregion

@@ -24,7 +24,7 @@ object DatabaseModule {
             app,
             AppDatabase::class.java,
             "simple_weather.db"
-        ).build()
+        ).fallbackToDestructiveMigration(dropAllTables = true).build()
 
     @Provides
     fun provideWeatherDao(

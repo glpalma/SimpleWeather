@@ -13,6 +13,8 @@ import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.temporal.ChronoField
 
+private fun isDay(hour: Int): Boolean = hour in 6..17
+
 fun ForecastDto.toDomain(): WeatherReport {
     return WeatherReport(
         current = current.toDomain(), daily = daily.toDomain(), hourly = hourly.toDomain()
@@ -36,65 +38,63 @@ fun ForecastDto.toEntity(cityId: String): WeatherEntity {
 }
 
 fun CurrentDto.toDomain(): CurrentWeather {
+    val parsedTime = LocalDateTime.parse(time)
     return CurrentWeather(
-        temperatureC = temperature_2m, condition = weatherCodeToCondition(weather_code)
+        temperatureC = temperature_2m,
+        condition = weatherCodeToCondition(weather_code),
+        isDay = isDay(parsedTime.hour)
     )
 }
 
 fun DailyDto.toDomain(): List<DailyForecast> {
-    val forecasts = ArrayList<DailyForecast>()
-
-    for (i in 0..<time.size) {
-        forecasts.add(
-            DailyForecast(
-                date = LocalDate.parse(time[i]),
-                minTempC = temperature_2m_min[i],
-                maxTempC = temperature_2m_max[i],
-                condition = weatherCodeToCondition(weather_code[i])
-            )
+    return time.indices.map { i ->
+        DailyForecast(
+            date = LocalDate.parse(time[i]),
+            minTempC = temperature_2m_min[i],
+            maxTempC = temperature_2m_max[i],
+            condition = weatherCodeToCondition(weather_code[i])
         )
     }
-
-    return forecasts
 }
 
 fun HourlyDto.toDomain(): List<HourlyForecast> {
-    val forecasts = ArrayList<HourlyForecast>()
-
-    for (i in 0..<time.size) {
-        forecasts.add(
-            HourlyForecast(
-                time = LocalDateTime.parse(time[i]),
-                temperatureC = temperature_2m[i],
-                condition = weatherCodeToCondition(weather_code[i])
-            )
+    return time.indices.map { i ->
+        val parsedTime = LocalDateTime.parse(time[i])
+        HourlyForecast(
+            time = parsedTime,
+            temperatureC = temperature_2m[i],
+            condition = weatherCodeToCondition(weather_code[i]),
+            isDay = isDay(parsedTime.hour)
         )
     }
-
-    return forecasts
 }
 
 fun WeatherEntity.toDomain(): WeatherReport {
+    val currentTime = LocalDateTime.ofEpochSecond(
+        lastUpdated, 0, java.time.ZoneOffset.UTC
+    )
     return WeatherReport(
-        current = CurrentDto(
-            temperature_2m = currentTemp,
-            weather_code = currentWeatherCode,
-            time = LocalDateTime.ofEpochSecond(
-                lastUpdated,
-                0,
-                java.time.ZoneOffset.UTC
-            ).toString()
-        ).toDomain(),
-        daily = DailyDto(
-            time = dates,
-            temperature_2m_min = minTemps,
-            temperature_2m_max = maxTemps,
-            weather_code = weatherCodes
-        ).toDomain(),
-        hourly = HourlyDto(
-            time = hourlyTimes,
-            temperature_2m = hourlyTemps,
-            weather_code = hourlyWeatherCodes
-        ).toDomain()
+        current = CurrentWeather(
+            temperatureC = currentTemp,
+            condition = weatherCodeToCondition(currentWeatherCode),
+            isDay = isDay(currentTime.hour)
+        ),
+        daily = dates.indices.map { i ->
+            DailyForecast(
+                date = LocalDate.parse(dates[i]),
+                minTempC = minTemps[i],
+                maxTempC = maxTemps[i],
+                condition = weatherCodeToCondition(weatherCodes[i])
+            )
+        },
+        hourly = hourlyTimes.indices.map { i ->
+            val parsedTime = LocalDateTime.parse(hourlyTimes[i])
+            HourlyForecast(
+                time = parsedTime,
+                temperatureC = hourlyTemps[i],
+                condition = weatherCodeToCondition(hourlyWeatherCodes[i]),
+                isDay = isDay(parsedTime.hour)
+            )
+        }
     )
 }

@@ -25,6 +25,6 @@ class WeatherRepositoryImpl @Inject constructor(
     }
 
     override suspend fun getCachedWeatherForCity(cityId: String): Result<WeatherReport?> {
-        return runCatching { weatherDao.getWeather(cityId)!!.toDomain() }
+        return runCatching { weatherDao.getWeather(cityId)?.toDomain() }
     }
 }

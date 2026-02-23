@@ -32,7 +32,7 @@ fun WeatherCard(
     val screenHeight = LocalConfiguration.current.screenHeightDp.dp
 
     val targetHeightFraction = when (mode) {
-        WeatherScreenMode.TODAY -> 0.65f
+        WeatherScreenMode.TODAY -> 0.75f
         WeatherScreenMode.SEVEN_DAY -> 0.28f
         WeatherScreenMode.CITY_PICKER -> 1f
     }

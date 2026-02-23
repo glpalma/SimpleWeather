@@ -1,6 +1,7 @@
 package com.glpalma.simpleweather.ui.weather.components
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -21,6 +22,7 @@ import androidx.compose.ui.unit.sp
 import com.glpalma.simpleweather.domain.model.HourlyForecast
 import com.glpalma.simpleweather.ui.theme.HourlyCardBackground
 import com.glpalma.simpleweather.ui.theme.HourlyCardSelected
+import com.glpalma.simpleweather.ui.theme.HourlyCardBorder
 import java.time.format.DateTimeFormatter
 
 @Composable
@@ -34,9 +36,10 @@ fun HourlyForecastCard(
     Column(
         modifier = modifier
             .width(72.dp)
-            .clip(RoundedCornerShape(24.dp))
+            .clip(RoundedCornerShape(30.dp))
             .background(backgroundColor)
-            .padding(horizontal = 12.dp, vertical = 14.dp),
+            .border(width = 1.dp, color = HourlyCardBorder, shape = RoundedCornerShape(30.dp))
+            .padding(horizontal = 12.dp, vertical = 10.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
@@ -52,7 +55,7 @@ fun HourlyForecastCard(
         WeatherIcon(
             condition = forecast.condition,
             isDay = forecast.isDay,
-            modifier = Modifier.size(28.dp)
+            modifier = Modifier.size(32.dp)
         )
 
         Spacer(Modifier.height(8.dp))

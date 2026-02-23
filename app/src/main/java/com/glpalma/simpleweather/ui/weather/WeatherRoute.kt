@@ -9,7 +9,6 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -60,6 +59,8 @@ import com.glpalma.simpleweather.ui.weather.components.TodayCardContent
 import com.glpalma.simpleweather.ui.weather.components.WeatherCard
 import com.glpalma.simpleweather.ui.weather.components.WeatherTopBar
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.navigationBarsPadding
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.LocalDateTime
@@ -85,7 +86,8 @@ fun WeatherRoute(
         onNewCitySelected = viewModel::selectAndSaveNewCity,
         onSearchQueryChange = viewModel::updateSearchQuery,
         onToggleCitySearch = viewModel::toggleCitySearch,
-        onClosePicker = { viewModel.setScreenMode(WeatherScreenMode.TODAY) })
+        onClosePicker = { viewModel.setScreenMode(WeatherScreenMode.TODAY) },
+        onCloseSevenDay = { viewModel.setScreenMode(WeatherScreenMode.TODAY) })
 }
 
 @Composable
@@ -99,7 +101,9 @@ fun WeatherScreen(
     onNewCitySelected: (CityInfo) -> Unit,
     onSearchQueryChange: (String) -> Unit,
     onToggleCitySearch: () -> Unit,
-    onClosePicker: () -> Unit
+    onClosePicker: () -> Unit,
+    onCloseSevenDay: () -> Unit,
+
 ) {
     val density = LocalDensity.current
     val scope = rememberCoroutineScope()
@@ -198,7 +202,8 @@ fun WeatherScreen(
 
                         WeatherScreenMode.SEVEN_DAY -> {
                             CompactTomorrowContent(
-                                dailyForecasts = state.currentWeather?.daily ?: emptyList()
+                                dailyForecasts = state.currentWeather?.daily ?: emptyList(),
+                                onClose = onCloseSevenDay
                             )
                         }
 
@@ -257,7 +262,7 @@ private fun TodayBottomSection(
     val now = LocalDateTime.now()
     val relevantHours = filterRelevantHours(hourlyForecasts, now)
 
-    Column(modifier = Modifier.padding(top = 16.dp)) {
+    Column(modifier = Modifier.padding(top = 16.dp).navigationBarsPadding()) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -278,8 +283,8 @@ private fun TodayBottomSection(
         Spacer(Modifier.height(8.dp))
 
         LazyRow(
-            modifier = Modifier.padding(horizontal = 16.dp),
-            horizontalArrangement = Arrangement.spacedBy(10.dp)
+            modifier = Modifier.padding(horizontal = 16.dp).fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceEvenly
         ) {
             items(relevantHours, key = { it.time.toString() }) { forecast ->
                 HourlyForecastCard(
@@ -295,7 +300,7 @@ private fun TodayBottomSection(
 private fun SevenDayBottomSection(
     dailyForecasts: List<DailyForecast>
 ) {
-    Column(modifier = Modifier.padding(top = 16.dp)) {
+    Column(modifier = Modifier.padding(top = 16.dp).navigationBarsPadding()) {
         com.glpalma.simpleweather.ui.weather.components.SevenDayList(
             dailyForecasts = dailyForecasts
         )
@@ -390,7 +395,9 @@ private fun WeatherScreenTodayPreview() {
             onNewCitySelected = {},
             onSearchQueryChange = {},
             onToggleCitySearch = {},
-            onClosePicker = {})
+            onClosePicker = {},
+            onCloseSevenDay = {}
+        )
     }
 }
 
@@ -408,7 +415,9 @@ private fun WeatherScreenSevenDayPreview() {
             onNewCitySelected = {},
             onSearchQueryChange = {},
             onToggleCitySearch = {},
-            onClosePicker = {})
+            onClosePicker = {},
+            onCloseSevenDay = {}
+        )
     }
 }
 
@@ -439,7 +448,9 @@ private fun WeatherScreenCityPickerPreview() {
             onNewCitySelected = {},
             onSearchQueryChange = {},
             onToggleCitySearch = {},
-            onClosePicker = {})
+            onClosePicker = {},
+            onCloseSevenDay = {}
+        )
     }
 }
 

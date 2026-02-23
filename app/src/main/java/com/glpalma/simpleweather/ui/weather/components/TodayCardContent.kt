@@ -27,15 +27,14 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.glpalma.simpleweather.domain.model.WeatherReport
+import com.glpalma.simpleweather.ui.theme.Rubik
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 
 @Composable
 fun TodayCardContent(
-    currentWeather: WeatherReport?,
-    isRefreshing: Boolean,
-    modifier: Modifier = Modifier
+    currentWeather: WeatherReport?, isRefreshing: Boolean, modifier: Modifier = Modifier
 ) {
     Column(
         modifier = modifier
@@ -45,9 +44,7 @@ fun TodayCardContent(
         verticalArrangement = Arrangement.Top
     ) {
         AnimatedVisibility(
-            visible = isRefreshing,
-            enter = fadeIn(),
-            exit = fadeOut()
+            visible = isRefreshing, enter = fadeIn(), exit = fadeOut()
         ) {
             UpdatingBadge()
         }
@@ -66,10 +63,10 @@ fun TodayCardContent(
             Spacer(Modifier.height(8.dp))
 
             Text(
-                text = "${current.temperatureC.toInt()}°",
-                fontSize = 80.sp,
-                fontWeight = FontWeight.Bold,
-                color = Color.White
+                text = "${current.temperatureC.toInt()}º",
+                fontSize = 110.sp,
+                color = Color.White,
+                fontFamily = Rubik,
             )
 
             Text(
@@ -84,9 +81,7 @@ fun TodayCardContent(
             Text(
                 text = LocalDate.now().format(
                     DateTimeFormatter.ofPattern("EEEE, d MMMM", Locale.getDefault())
-                ),
-                fontSize = 14.sp,
-                color = Color.White.copy(alpha = 0.7f)
+                ), fontSize = 14.sp, color = Color.White.copy(alpha = 0.7f)
             )
         } else {
             CircularProgressIndicator(color = Color.White)

@@ -5,10 +5,15 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowBackIosNew
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -18,26 +23,32 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.glpalma.simpleweather.domain.model.DailyForecast
+import com.glpalma.simpleweather.ui.theme.Rubik
 
 @Composable
 fun CompactTomorrowContent(
-    dailyForecasts: List<DailyForecast>,
-    modifier: Modifier = Modifier
+    dailyForecasts: List<DailyForecast>, modifier: Modifier = Modifier, onClose: () -> Unit
 ) {
     val tomorrow = dailyForecasts.getOrNull(1)
 
     Column(
         modifier = modifier
             .fillMaxSize()
-            .padding(20.dp),
+            .padding(8.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.Start,
+        ) {
+            IconButton(onClick = onClose) {
+                Icon(Icons.Filled.ArrowBackIosNew, contentDescription = "Close", tint = Color.White)
+            }
+        }
         Text(
-            text = "Tomorrow",
-            color = Color.White,
-            fontSize = 16.sp,
-            fontWeight = FontWeight.Medium
+            text = "Tomorrow", color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Medium
         )
 
         Spacer(Modifier.height(12.dp))
@@ -48,21 +59,20 @@ fun CompactTomorrowContent(
                 horizontalArrangement = Arrangement.Center
             ) {
                 WeatherIcon(
-                    condition = tomorrow.condition,
-                    isDay = true,
-                    modifier = Modifier.size(48.dp)
+                    condition = tomorrow.condition, isDay = true, modifier = Modifier.size(48.dp)
                 )
                 Spacer(Modifier.width(12.dp))
                 Text(
                     text = "${tomorrow.maxTempC.toInt()}°",
-                    fontSize = 40.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = Color.White
+                    fontSize = 64.sp,
+                    color = Color.White,
+                    fontFamily = Rubik
                 )
                 Text(
                     text = "/${tomorrow.minTempC.toInt()}°",
-                    fontSize = 22.sp,
-                    color = Color.White.copy(alpha = 0.7f)
+                    fontSize = 32.sp,
+                    color = Color.White.copy(alpha = 0.7f),
+                    fontFamily = Rubik
                 )
             }
 

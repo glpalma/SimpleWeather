@@ -11,20 +11,13 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
@@ -45,37 +38,19 @@ fun CityPickerContent(
     searchResults: List<CityInfo>,
     isSearching: Boolean,
     isCitySearchVisible: Boolean,
-    onToggleSearch: () -> Unit,
     onSearchQueryChange: (String) -> Unit,
     onSavedCitySelected: (DisplayInfo) -> Unit,
     onNewCitySelected: (CityInfo) -> Unit,
-    onClose: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Column(
         modifier = modifier
             .fillMaxSize()
-            .statusBarsPadding()
-            .navigationBarsPadding()
             .padding(16.dp)
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            IconButton(onClick = onClose) {
-                Icon(Icons.Filled.Close, contentDescription = "Close", tint = Color.White)
-            }
-            IconButton(onClick = onToggleSearch) {
-                Icon(Icons.Filled.Search, contentDescription = "Search", tint = Color.White)
-            }
-        }
 
         AnimatedVisibility(
-            visible = isCitySearchVisible,
-            enter = expandVertically(),
-            exit = shrinkVertically()
+            visible = isCitySearchVisible, enter = expandVertically(), exit = shrinkVertically()
         ) {
             Column {
                 TextField(
@@ -125,9 +100,7 @@ fun CityPickerContent(
                     ) {
                         items(searchResults, key = { it.id }) { city ->
                             SearchResultRow(
-                                city = city,
-                                onClick = { onNewCitySelected(city) }
-                            )
+                                city = city, onClick = { onNewCitySelected(city) })
                         }
                     }
 
@@ -142,10 +115,7 @@ fun CityPickerContent(
         Spacer(Modifier.height(12.dp))
 
         Text(
-            text = "My Cities",
-            color = Color.White,
-            fontWeight = FontWeight.Bold,
-            fontSize = 18.sp
+            text = "My Cities", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 18.sp
         )
 
         Spacer(Modifier.height(12.dp))
@@ -163,9 +133,7 @@ fun CityPickerContent(
             ) {
                 items(savedCities, key = { it.cityInfo.id }) { displayInfo ->
                     SavedCityRow(
-                        displayInfo = displayInfo,
-                        onClick = { onSavedCitySelected(displayInfo) }
-                    )
+                        displayInfo = displayInfo, onClick = { onSavedCitySelected(displayInfo) })
                 }
             }
         }
@@ -174,8 +142,7 @@ fun CityPickerContent(
 
 @Composable
 private fun SearchResultRow(
-    city: CityInfo,
-    onClick: () -> Unit
+    city: CityInfo, onClick: () -> Unit
 ) {
     Row(
         modifier = Modifier
@@ -197,9 +164,7 @@ private fun SearchResultRow(
                 city.country
             }
             Text(
-                text = subtitle,
-                color = Color.White.copy(alpha = 0.6f),
-                fontSize = 13.sp
+                text = subtitle, color = Color.White.copy(alpha = 0.6f), fontSize = 13.sp
             )
         }
     }
@@ -207,8 +172,7 @@ private fun SearchResultRow(
 
 @Composable
 private fun SavedCityRow(
-    displayInfo: DisplayInfo,
-    onClick: () -> Unit
+    displayInfo: DisplayInfo, onClick: () -> Unit
 ) {
     Row(
         modifier = Modifier
@@ -231,9 +195,7 @@ private fun SavedCityRow(
                 displayInfo.cityInfo.country
             }
             Text(
-                text = subtitle,
-                color = Color.White.copy(alpha = 0.6f),
-                fontSize = 13.sp
+                text = subtitle, color = Color.White.copy(alpha = 0.6f), fontSize = 13.sp
             )
         }
 

@@ -93,15 +93,14 @@ fun WeatherCard(
 
         Box( // lip
             modifier = Modifier
-                .fillMaxWidth(0.95f)
+                .fillMaxWidth(0.975f)
                 .height(60.dp)
                 .align(Alignment.BottomCenter)
                 .offset(y = lipOffset)
                 .clip(RoundedCornerShape(bottomStart = cornerRadius, bottomEnd = cornerRadius))
-                .blur(60.dp)
-                .background(WeatherCardBottom.copy(alpha = 0.6f))
+                .border(1.dp, Color.Black.copy(alpha = 0.4f), shape = RoundedCornerShape(bottomStart = cornerRadius, bottomEnd = cornerRadius))
+                .background(WeatherCardBottom.copy(alpha = 0.6f), )
         )
-
 
         Box( // main content
             modifier = Modifier

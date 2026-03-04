@@ -12,9 +12,9 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -74,7 +74,7 @@ import com.glpalma.simpleweather.ui.weather.components.HourlyForecastCard
 import com.glpalma.simpleweather.ui.weather.components.TodayCardContent
 import com.glpalma.simpleweather.ui.weather.components.WeatherCard
 import com.glpalma.simpleweather.ui.weather.components.WeatherTopBar
-import com.glpalma.simpleweather.ui.weather.components.cardWidth
+import com.glpalma.simpleweather.ui.weather.components.defaultCardWidth
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.LocalDateTime
@@ -358,12 +358,11 @@ private fun TodayBottomSection(
 
         Spacer(Modifier.height(8.dp))
 
-        val cardGap = ((LocalConfiguration.current.screenWidthDp - 4 * cardWidth)/5).dp
+        val cardGap = ((LocalConfiguration.current.screenWidthDp - 4 * defaultCardWidth) / 5).dp
         LazyRow(
-            modifier = Modifier
-                .fillMaxWidth(),
+            modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(cardGap),
-            contentPadding = PaddingValues(start = cardGap, end = cardGap)
+            contentPadding = PaddingValues(start = cardGap, end = cardGap),
         ) {
             items(upcomingHours, key = { it.time.toString() }) { forecast ->
                 HourlyForecastCard(
@@ -394,10 +393,7 @@ private fun filterUpcomingHours(
     hourly: List<HourlyForecast>, now: LocalDateTime
 ): List<HourlyForecast> {
     val previousHourStart = now.withMinute(0).withSecond(0).withNano(0).minusHours(1)
-    return hourly
-        .filter { it.time >= previousHourStart }
-        .sortedBy { it.time }
-        .apply {
+    return hourly.filter { it.time >= previousHourStart }.sortedBy { it.time }.apply {
             if (size > 12) {
                 return slice(0..12)
             }

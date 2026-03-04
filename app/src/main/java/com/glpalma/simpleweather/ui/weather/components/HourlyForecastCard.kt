@@ -25,6 +25,8 @@ import com.glpalma.simpleweather.ui.theme.HourlyCardSelected
 import com.glpalma.simpleweather.ui.theme.HourlyCardBorder
 import java.time.format.DateTimeFormatter
 
+const val cardWidth = 75
+
 @Composable
 fun HourlyForecastCard(
     forecast: HourlyForecast,
@@ -35,7 +37,7 @@ fun HourlyForecastCard(
 
     Column(
         modifier = modifier
-            .width(72.dp)
+            .width(cardWidth.dp)
             .clip(RoundedCornerShape(30.dp))
             .background(backgroundColor)
             .border(width = 1.dp, color = HourlyCardBorder, shape = RoundedCornerShape(30.dp))

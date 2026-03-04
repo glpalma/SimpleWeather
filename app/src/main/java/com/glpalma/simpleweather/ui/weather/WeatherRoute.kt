@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -48,6 +49,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
@@ -72,6 +74,7 @@ import com.glpalma.simpleweather.ui.weather.components.HourlyForecastCard
 import com.glpalma.simpleweather.ui.weather.components.TodayCardContent
 import com.glpalma.simpleweather.ui.weather.components.WeatherCard
 import com.glpalma.simpleweather.ui.weather.components.WeatherTopBar
+import com.glpalma.simpleweather.ui.weather.components.cardWidth
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.LocalDateTime
@@ -262,13 +265,10 @@ fun WeatherScreen(
                     ) { targetMode ->
                         when (targetMode) {
                             WeatherScreenMode.TODAY -> {
-                                Column {
-                                    TodayCardContent(
-                                        currentWeather = state.currentWeather,
-                                        isRefreshing = state.isRefreshing
-                                    )
-
-                                }
+                                TodayCardContent(
+                                    currentWeather = state.currentWeather,
+                                    isRefreshing = state.isRefreshing
+                                )
                             }
 
                             WeatherScreenMode.SEVEN_DAY -> {
@@ -330,7 +330,9 @@ private fun TodayBottomSection(
     hourlyForecasts: List<HourlyForecast>, onSevenDaysClick: () -> Unit
 ) {
     val now = LocalDateTime.now()
-    val relevantHours = filterRelevantHours(hourlyForecasts, now)
+    val upcomingHours = remember(hourlyForecasts, now) {
+        filterUpcomingHours(hourlyForecasts, now)
+    }
 
     Column(
         modifier = Modifier
@@ -356,13 +358,14 @@ private fun TodayBottomSection(
 
         Spacer(Modifier.height(8.dp))
 
+        val cardGap = ((LocalConfiguration.current.screenWidthDp - 4 * cardWidth)/5).dp
         LazyRow(
             modifier = Modifier
-                .padding(horizontal = 16.dp)
                 .fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceEvenly
+            horizontalArrangement = Arrangement.spacedBy(cardGap),
+            contentPadding = PaddingValues(start = cardGap, end = cardGap)
         ) {
-            items(relevantHours, key = { it.time.toString() }) { forecast ->
+            items(upcomingHours, key = { it.time.toString() }) { forecast ->
                 HourlyForecastCard(
                     forecast = forecast,
                     isCurrentHour = forecast.time.hour == now.hour && forecast.time.toLocalDate() == now.toLocalDate()
@@ -387,17 +390,18 @@ private fun SevenDayBottomSection(
     }
 }
 
-private fun filterRelevantHours(
+private fun filterUpcomingHours(
     hourly: List<HourlyForecast>, now: LocalDateTime
 ): List<HourlyForecast> {
-    val currentHourIndex = hourly.indexOfFirst {
-        it.time.hour == now.hour && it.time.toLocalDate() == now.toLocalDate()
-    }
-    if (currentHourIndex == -1) return hourly.take(4)
-
-    val startIndex = (currentHourIndex - 1).coerceAtLeast(0)
-    val endIndex = (currentHourIndex + 3).coerceAtMost(hourly.size)
-    return hourly.subList(startIndex, endIndex)
+    val previousHourStart = now.withMinute(0).withSecond(0).withNano(0).minusHours(1)
+    return hourly
+        .filter { it.time >= previousHourStart }
+        .sortedBy { it.time }
+        .apply {
+            if (size > 12) {
+                return slice(0..12)
+            }
+        }
 }
 
 // region Previews

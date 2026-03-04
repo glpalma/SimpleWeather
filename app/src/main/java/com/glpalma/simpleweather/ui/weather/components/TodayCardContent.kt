@@ -36,58 +36,63 @@ import java.util.Locale
 fun TodayCardContent(
     currentWeather: WeatherReport?, isRefreshing: Boolean, modifier: Modifier = Modifier
 ) {
-    Column(
-        modifier = modifier
-            .fillMaxSize()
-            .padding(0.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Top
-    ) {
+    Box {
         AnimatedVisibility(
-            visible = isRefreshing, enter = fadeIn(), exit = fadeOut()
+            modifier = Modifier.align(Alignment.TopCenter),
+            visible = isRefreshing, enter = fadeIn(), exit = fadeOut(),
         ) {
             UpdatingBadge()
         }
 
-        Spacer(Modifier.weight(1f))
+        Column(
+            modifier = modifier
+                .fillMaxSize()
+                .padding(0.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Top
+        ) {
 
-        if (currentWeather != null) {
-            val current = currentWeather.current
 
-            WeatherIcon(
-                condition = current.condition,
-                isDay = current.isDay,
-                modifier = Modifier.size(120.dp)
-            )
+            Spacer(Modifier.weight(1f))
 
-            Spacer(Modifier.height(8.dp))
+            if (currentWeather != null) {
+                val current = currentWeather.current
 
-            Text(
-                text = "${current.temperatureC.toInt()}º",
-                fontSize = 110.sp,
-                color = Color.White,
-                fontFamily = Rubik,
-            )
+                WeatherIcon(
+                    condition = current.condition,
+                    isDay = current.isDay,
+                    modifier = Modifier.size(120.dp)
+                )
 
-            Text(
-                text = current.condition.displayName,
-                fontSize = 20.sp,
-                fontWeight = FontWeight.Medium,
-                color = Color.White
-            )
+                Spacer(Modifier.height(8.dp))
 
-            Spacer(Modifier.height(4.dp))
+                Text(
+                    text = "${current.temperatureC.toInt()}º",
+                    fontSize = 110.sp,
+                    color = Color.White,
+                    fontFamily = Rubik,
+                )
 
-            Text(
-                text = LocalDate.now().format(
-                    DateTimeFormatter.ofPattern("EEEE, d MMMM", Locale.getDefault())
-                ), fontSize = 14.sp, color = Color.White.copy(alpha = 0.7f)
-            )
-        } else {
-            CircularProgressIndicator(color = Color.White)
+                Text(
+                    text = current.condition.displayName,
+                    fontSize = 20.sp,
+                    fontWeight = FontWeight.Medium,
+                    color = Color.White
+                )
+
+                Spacer(Modifier.height(4.dp))
+
+                Text(
+                    text = LocalDate.now().format(
+                        DateTimeFormatter.ofPattern("EEEE, d MMMM", Locale.getDefault())
+                    ), fontSize = 14.sp, color = Color.White.copy(alpha = 0.7f)
+                )
+            } else {
+                CircularProgressIndicator(color = Color.White)
+            }
+
+            Spacer(Modifier.weight(1f))
         }
-
-        Spacer(Modifier.weight(1f))
     }
 }
 

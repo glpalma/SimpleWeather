@@ -14,5 +14,8 @@ data class WeatherUiState(
     val searchResults: List<CityInfo> = emptyList(),
     val isSearching: Boolean = false,
     val isCitySearchVisible: Boolean = false,
-    val errorMessage: String? = null
+    val errorMessage: String? = null,
+    val locationPermissionGranted: Boolean = false,
+    val isLoadingLocation: Boolean = false,
+    val currentLocationWeather: DisplayInfo? = null
 )

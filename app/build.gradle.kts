@@ -75,6 +75,9 @@ dependencies {
     ksp(libs.hilt.android.compiler)
     implementation(libs.androidx.hilt.navigation.compose)
 
+    // Location
+    implementation(libs.play.services.location)
+
     // Room
     implementation(libs.androidx.room.runtime)
     ksp(libs.androidx.room.compiler)

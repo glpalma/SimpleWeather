@@ -1,6 +1,10 @@
 package com.glpalma.simpleweather.ui.weather
 
+import android.Manifest
+import android.content.pm.PackageManager
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
@@ -38,6 +42,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -50,6 +55,7 @@ import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
@@ -57,6 +63,7 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.glpalma.simpleweather.domain.model.CityInfo
 import com.glpalma.simpleweather.domain.model.CurrentWeather
@@ -85,6 +92,34 @@ fun WeatherRoute(
     viewModel: WeatherViewModel = hiltViewModel()
 ) {
     val state by viewModel.state.collectAsState()
+    val context = LocalContext.current
+
+    val permissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        viewModel.onLocationPermissionResult(isGranted)
+    }
+
+    LaunchedEffect(state.screenMode) {
+        if (state.screenMode == WeatherScreenMode.CITY_PICKER) {
+            val granted = ContextCompat.checkSelfPermission(
+                context, Manifest.permission.ACCESS_COARSE_LOCATION
+            ) == PackageManager.PERMISSION_GRANTED
+            viewModel.updateLocationPermissionStatus(granted)
+        }
+    }
+
+    val onCurrentLocationClick: () -> Unit = {
+        val hasPermission = ContextCompat.checkSelfPermission(
+            context, Manifest.permission.ACCESS_COARSE_LOCATION
+        ) == PackageManager.PERMISSION_GRANTED
+
+        if (hasPermission) {
+            viewModel.selectCurrentLocation()
+        } else {
+            permissionLauncher.launch(Manifest.permission.ACCESS_COARSE_LOCATION)
+        }
+    }
 
     BackHandler(enabled = state.screenMode != WeatherScreenMode.TODAY) {
         viewModel.setScreenMode(WeatherScreenMode.TODAY)
@@ -101,7 +136,8 @@ fun WeatherRoute(
         onSearchQueryChange = viewModel::updateSearchQuery,
         onToggleCitySearch = viewModel::toggleCitySearch,
         onClosePicker = { viewModel.setScreenMode(WeatherScreenMode.TODAY) },
-        onCloseSevenDay = { viewModel.setScreenMode(WeatherScreenMode.TODAY) })
+        onCloseSevenDay = { viewModel.setScreenMode(WeatherScreenMode.TODAY) },
+        onCurrentLocationClick = onCurrentLocationClick)
 }
 
 @Composable
@@ -117,8 +153,8 @@ fun WeatherScreen(
     onToggleCitySearch: () -> Unit,
     onClosePicker: () -> Unit,
     onCloseSevenDay: () -> Unit,
-
-    ) {
+    onCurrentLocationClick: () -> Unit = {},
+) {
     val density = LocalDensity.current
     val scope = rememberCoroutineScope()
     val pullOffset = remember { Animatable(0f) }
@@ -287,7 +323,11 @@ fun WeatherScreen(
                                     isCitySearchVisible = state.isCitySearchVisible,
                                     onSearchQueryChange = onSearchQueryChange,
                                     onSavedCitySelected = onSavedCitySelected,
-                                    onNewCitySelected = onNewCitySelected
+                                    onNewCitySelected = onNewCitySelected,
+                                    onCurrentLocationClick = onCurrentLocationClick,
+                                    locationPermissionGranted = state.locationPermissionGranted,
+                                    isLoadingLocation = state.isLoadingLocation,
+                                    currentLocationWeather = state.currentLocationWeather
                                 )
                             }
                         }
@@ -476,7 +516,8 @@ private fun WeatherScreenTodayPreview() {
             onSearchQueryChange = {},
             onToggleCitySearch = {},
             onClosePicker = {},
-            onCloseSevenDay = {})
+            onCloseSevenDay = {},
+            onCurrentLocationClick = {})
     }
 }
 
@@ -495,7 +536,8 @@ private fun WeatherScreenSevenDayPreview() {
             onSearchQueryChange = {},
             onToggleCitySearch = {},
             onClosePicker = {},
-            onCloseSevenDay = {})
+            onCloseSevenDay = {},
+            onCurrentLocationClick = {})
     }
 }
 
@@ -524,7 +566,8 @@ private fun WeatherScreenCityPickerPreview() {
             onSearchQueryChange = {},
             onToggleCitySearch = {},
             onClosePicker = {},
-            onCloseSevenDay = {})
+            onCloseSevenDay = {},
+            onCurrentLocationClick = {})
     }
 }
 

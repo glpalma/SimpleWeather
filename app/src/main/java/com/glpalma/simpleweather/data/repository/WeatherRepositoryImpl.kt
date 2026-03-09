@@ -18,8 +18,11 @@ class WeatherRepositoryImpl @Inject constructor(
     ): Result<WeatherReport> {
         return runCatching {
             val dto = api.getForecast(cityInfo.latitude, cityInfo.longitude)
-            weatherDao.upsert(dto.toEntity(cityInfo.id))
-
+            try {
+                weatherDao.upsert(dto.toEntity(cityInfo.id))
+            } catch (_: Exception) {
+                // Cache write is best-effort; FK violation expected for transient cities
+            }
             dto.toDomain()
         }
     }

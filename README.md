@@ -2,6 +2,11 @@
 
 A modern Android weather app built with Jetpack Compose, following Clean Architecture principles and the MVVM pattern.
 
+The main goal for this project was to further understand Clean Code practices and experiment with Compose's capabilities.
+
+I used [ui.vitali's design on Instagram](https://www.instagram.com/p/CPXuDRYpQST) as an inspiration.
+
+<!-- markdownlint-disable MD033 -->
 <p align="center">
   <img src="readme/screenshot_today.png" alt="Today screen" width="175" />
   &nbsp;&nbsp;
@@ -11,6 +16,7 @@ A modern Android weather app built with Jetpack Compose, following Clean Archite
   &nbsp;&nbsp;
   <img src="readme/usage_preview.gif" alt="Usage preview" width="175" />
 </p>
+<!-- markdownlint-enable MD033 -->
 
 ---
 
@@ -23,6 +29,7 @@ A modern Android weather app built with Jetpack Compose, following Clean Archite
 | **Architecture** | Clean Architecture, MVVM |
 | **Dependency Injection** | Hilt |
 | **Networking** | Retrofit 2 + Moshi |
+| **Location** | Google Play Services Location (FusedLocationProviderClient) |
 | **Local Storage** | Room (SQLite) |
 | **Async** | Kotlin Coroutines + StateFlow |
 | **API** | [Open-Meteo](https://open-meteo.com/) (weather) + [Open-Meteo Geocoding](https://geocoding-api.open-meteo.com/) (city search) |
@@ -65,11 +72,13 @@ data/
 │   └── WeatherConditionMapper  ← Maps WMO codes → WeatherCondition enum
 ├── repository/        # Repository implementations
 │   ├── WeatherRepositoryImpl   ← Fetches from API, caches in Room
-│   └── CityRepositoryImpl      ← Searches cities, manages saved list
+│   ├── CityRepositoryImpl      ← Searches cities, manages saved list
+│   └── LocationRepositoryImpl  ← Device location via FusedLocationProviderClient + Geocoder
 └── di/                # Hilt modules
     ├── NetworkModule            ← Provides Retrofit, OkHttp, API interfaces
     ├── DatabaseModule           ← Provides Room database and DAOs
     ├── RepositoryModule         ← Binds repository implementations
+    ├── LocationModule           ← Provides FusedLocationProviderClient
     └── qualifier/
         ├── WeatherRetrofit      ← Qualifier for weather API Retrofit
         └── GeocodingRetrofit    ← Qualifier for geocoding API Retrofit
@@ -91,11 +100,13 @@ domain/
 │   └── DisplayInfo             ← CityInfo + WeatherReport for the UI
 ├── repository/
 │   ├── WeatherRepository       ← Interface for weather data access
-│   └── CityRepository          ← Interface for city data access
+│   ├── CityRepository          ← Interface for city data access
+│   └── LocationRepository      ← Interface for device location access
 └── usecase/
     ├── GetWeatherReportUseCase          ← Fetch fresh weather for a city
     ├── GetSavedCitiesWithWeatherUseCase ← Get saved cities + cached weather
     ├── GetCityListFromNameUseCase       ← Search cities by name
+    ├── GetCurrentLocationWeatherUseCase ← Get device location + weather
     └── SaveCityUseCase                  ← Persist a city selection
 ```
 
@@ -110,7 +121,7 @@ ui/
 │   ├── Theme.kt                ← SimpleWeatherTheme composable
 │   └── Type.kt                 ← Typography definitions
 └── weather/
-    ├── WeatherRoute             ← Stateful entry point (ViewModel ↔ Screen)
+    ├── WeatherRoute             ← Stateful entry point (ViewModel ↔ Screen + permission handling)
     ├── WeatherScreen            ← Stateless main UI composable
     ├── WeatherViewModel         ← StateFlow-based MVVM ViewModel
     ├── WeatherUiState           ← Single state object for the whole screen
@@ -148,6 +159,7 @@ The following diagram shows how data flows through the app when the user views w
 │  GetWeatherReportUseCase ──────► WeatherRepository (interface)       │
 │  GetSavedCitiesWithWeatherUseCase ──► CityRepository (interface)     │
 │  GetCityListFromNameUseCase ──► CityRepository (interface)           │
+│  GetCurrentLocationWeatherUseCase ─► LocationRepository + Weather…  │
 │  SaveCityUseCase ──────────────► CityRepository (interface)          │
 │                                       │                              │
 ├───────────────────────────────────────┼──────────────────────────────┤
@@ -156,9 +168,9 @@ The following diagram shows how data flows through the app when the user views w
 │                          RepositoryImpl                              │
 │                           ┌─────┴─────┐                              │
 │                           ▼           ▼                              │
-│                     OpenMeteoApi   Room DB                           │
-│                     GeocodingApi   (WeatherDao,                      │
-│                           │         CityDao)                         │
+│                     OpenMeteoApi   Room DB       FusedLocation       │
+│                     GeocodingApi   (WeatherDao,  ProviderClient      │
+│                           │         CityDao)     + Geocoder          │
 │                           ▼           │                              │
 │                        DTOs ──mapper──► Domain Models                │
 │                                   ◄──mapper── Entities               │
@@ -172,6 +184,15 @@ The following diagram shows how data flows through the app when the user views w
 3. ViewModel calls `GetWeatherReportUseCase` → hits the **Open-Meteo API**
 4. Repository maps the DTO to a domain model and caches it in Room
 5. ViewModel updates `WeatherUiState` with fresh data → UI recomposes
+
+**Location weather flow (on-demand):**
+
+1. User taps the "Current location" button in the city picker
+2. `WeatherRoute` checks `ACCESS_COARSE_LOCATION` — if not granted, the system permission dialog is shown (permission is never requested eagerly)
+3. On grant, ViewModel calls `GetCurrentLocationWeatherUseCase`
+4. `LocationRepositoryImpl` fetches device coordinates via `FusedLocationProviderClient`, reverse-geocodes them with `Geocoder`, and returns a `CityInfo`
+5. `WeatherRepositoryImpl` fetches the forecast for those coordinates from Open-Meteo
+6. ViewModel navigates to the TODAY screen with the location-based weather
 
 ---
 
@@ -208,3 +229,5 @@ The app follows **Model-View-ViewModel** with unidirectional data flow:
 - **ViewModel owns business logic:** Screen mode transitions, debounced search, cache-then-network refresh, and error handling all live in `WeatherViewModel`. The composables are purely presentational.
 
 - **Use cases as the ViewModel's API to data:** The ViewModel never touches repositories directly. Each operation goes through a focused use case (`GetWeatherReportUseCase`, `SaveCityUseCase`, etc.), keeping the ViewModel lean and the domain layer testable in isolation.
+
+- **UI owns permissions, data layer assumes access:** Runtime permission requests (`ACCESS_COARSE_LOCATION`) are handled in `WeatherRoute` via `rememberLauncherForActivityResult`. The `LocationRepository` assumes permission is already granted — it simply fetches location data. This keeps the data layer framework-agnostic.

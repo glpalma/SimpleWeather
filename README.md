@@ -231,3 +231,8 @@ The app follows **Model-View-ViewModel** with unidirectional data flow:
 - **Use cases as the ViewModel's API to data:** The ViewModel never touches repositories directly. Each operation goes through a focused use case (`GetWeatherReportUseCase`, `SaveCityUseCase`, etc.), keeping the ViewModel lean and the domain layer testable in isolation.
 
 - **UI owns permissions, data layer assumes access:** Runtime permission requests (`ACCESS_COARSE_LOCATION`) are handled in `WeatherRoute` via `rememberLauncherForActivityResult`. The `LocationRepository` assumes permission is already granted — it simply fetches location data. This keeps the data layer framework-agnostic.
+
+## Future improvements
+- [ ] Create 3D icons to make the app feel more premium, as the design suggests
+- [ ] Add more data such as rain probability, wind speeds etc
+- [ ] Multiple color gradients based on the selected city's weather condition
